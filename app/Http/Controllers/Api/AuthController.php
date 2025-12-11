@@ -57,7 +57,7 @@ class AuthController extends Controller
         // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Load organizations
+        // Load organizations with pivot
         $user->load('organizations');
 
         return response()->json([
@@ -91,7 +91,7 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Load organizations
+        // Load organizations with pivot data
         $user->load('organizations');
 
         return response()->json([

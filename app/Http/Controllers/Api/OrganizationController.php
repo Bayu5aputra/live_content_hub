@@ -1,138 +1,41 @@
-<?php
-
-namespace App\Http\Controllers\Api;
-
-use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreOrganizationRequest;
-use App\Http\Requests\UpdateOrganizationRequest;
-use App\Http\Resources\OrganizationCollection;
-use App\Http\Resources\OrganizationResource;
-use App\Http\Resources\UserResource;
-use App\Models\Organization;
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
-
-class OrganizationController extends Controller
+/**
+ * Store a newly created organization
+ */
+public function store(StoreOrganizationRequest $request)
 {
-    /**
-     * Display a listing of organizations
-     */
-    public function index()
-    {
-        $organizations = Organization::with(['users', 'contents', 'playlists'])
-            ->withCount(['users', 'contents', 'playlists'])
-            ->paginate(15);
+    $validated = $request->validated();
 
-        return new OrganizationCollection($organizations);
-    }
+    // Generate slug if not provided
+    $validated['slug'] = $validated['slug'] ?? Str::slug($validated['name']);
 
-    /**
-     * Store a newly created organization
-     */
-    public function store(StoreOrganizationRequest $request)
-    {
-        $validated = $request->validated();
+    // Generate unique code
+    $validated['code'] = strtoupper(Str::random(8));
 
-        $validated['slug'] = $validated['slug'] ?? Str::slug($validated['name']);
+    // Create organization
+    $organization = Organization::create([
+        'name' => $validated['name'],
+        'slug' => $validated['slug'],
+        'code' => $validated['code'],
+        'domain' => $validated['domain'] ?? null,
+        'is_active' => $validated['is_active'] ?? true,
+    ]);
 
-        $organization = Organization::create($validated);
-
-        // Attach current user as admin
-        $organization->users()->attach($request->user()->id, ['role' => 'admin']);
-
-        return (new OrganizationResource($organization->load('users')))
-            ->response()
-            ->setStatusCode(201);
-    }
-
-    /**
-     * Display the specified organization
-     */
-    public function show(Organization $organization)
-    {
-        $organization->load(['users', 'contents', 'playlists'])
-            ->loadCount(['users', 'contents', 'playlists']);
-
-        return new OrganizationResource($organization);
-    }
-
-    /**
-     * Update the specified organization
-     */
-    public function update(UpdateOrganizationRequest $request, Organization $organization)
-    {
-        $validated = $request->validated();
-
-        $organization->update($validated);
-
-        return new OrganizationResource($organization);
-    }
-
-    /**
-     * Remove the specified organization
-     */
-    public function destroy(Organization $organization)
-    {
-        $organization->delete();
-
-        return response()->json([
-            'message' => 'Organization deleted successfully',
-        ]);
-    }
-
-    /**
-     * Add user to organization
-     */
-    public function addUser(Request $request, Organization $organization)
-    {
-        $validated = $request->validate([
-            'email' => 'required|email',
-            'name' => 'required|string|max:255',
-            'password' => 'required|string|min:8',
-            'role' => 'required|in:admin,editor,viewer',
-        ]);
-
+    // Create admin user if provided
+    if (isset($validated['admin_email'])) {
         $user = User::firstOrCreate(
-            ['email' => $validated['email']],
+            ['email' => $validated['admin_email']],
             [
-                'name' => $validated['name'],
-                'password' => Hash::make($validated['password']),
+                'name' => $validated['admin_name'],
+                'password' => Hash::make($validated['admin_password']),
+                'is_super_admin' => false,
             ]
         );
 
-        $organization->users()->syncWithoutDetaching([
-            $user->id => ['role' => $validated['role']]
-        ]);
-
-        return response()->json([
-            'message' => 'User added to organization successfully',
-            'user' => new UserResource($user),
-        ]);
+        // Attach user to organization as admin
+        $organization->users()->attach($user->id, ['role' => 'admin']);
     }
 
-    /**
-     * Remove user from organization
-     */
-    public function removeUser(Organization $organization, User $user)
-    {
-        $organization->users()->detach($user->id);
-
-        return response()->json([
-            'message' => 'User removed from organization successfully',
-        ]);
-    }
-
-    /**
-     * Toggle organization active status
-     */
-    public function toggleStatus(Organization $organization)
-    {
-        $organization->update([
-            'is_active' => !$organization->is_active,
-        ]);
-
-        return new OrganizationResource($organization);
-    }
+    return (new OrganizationResource($organization->load('users')))
+        ->response()
+        ->setStatusCode(201);
 }

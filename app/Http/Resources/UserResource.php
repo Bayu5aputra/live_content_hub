@@ -35,7 +35,7 @@ class UserResource extends JsonResource
                             'code' => $org->code,
                             'domain' => $org->domain,
                             'is_active' => $org->is_active,
-                            'role' => $org->pivot ? $org->pivot->role : null,
+                            'role' => $org->pivot->role ?? null,
                         ];
                     });
                 }
@@ -43,8 +43,10 @@ class UserResource extends JsonResource
 
             // Pivot data when loaded through relationship
             'role' => $this->when(
-                $this->pivot && isset($this->pivot->role),
-                $this->pivot->role
+                isset($this->pivot) && $this->pivot !== null,
+                function() {
+                    return $this->pivot->role ?? null;
+                }
             ),
         ];
     }

@@ -4,6 +4,7 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4" x-data="{
+    user: null,
     organizations: [],
     loading: true,
     token: localStorage.getItem('token'),
@@ -12,9 +13,9 @@
             window.location.href = '/login';
             return;
         }
-        this.loadOrganizations();
+        this.loadUser();
     },
-    loadOrganizations() {
+    loadUser() {
         fetch('/api/user', {
             headers: { 'Authorization': 'Bearer ' + this.token }
         })
@@ -23,7 +24,13 @@
             return r.json();
         })
         .then(d => {
+            this.user = d;
             this.organizations = d.organizations || [];
+            
+            // Redirect berdasarkan role
+            if (d.is_super_admin) {
+                window.location.href = '/super-admin/organizations';
+            }
         })
         .catch(() => {
             localStorage.removeItem('token');
@@ -45,7 +52,6 @@
     <template x-if="!loading && organizations.length === 0">
         <div class="bg-white rounded-lg shadow p-8 text-center">
             <p class="text-gray-500 mb-4">Anda belum memiliki organisasi</p>
-            <a href="/admin/organizations/create" class="text-blue-600 hover:underline">Buat Organisasi Baru</a>
         </div>
     </template>
 
@@ -54,15 +60,12 @@
             <template x-for="org in organizations" :key="org.id">
                 <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
                     <h3 class="text-xl font-semibold mb-2" x-text="org.name"></h3>
-                    <p class="text-sm text-gray-500 mb-4" x-text="org.slug"></p>
+                    <p class="text-sm text-gray-500 mb-1" x-text="org.slug"></p>
+                    <p class="text-xs text-gray-400 mb-4" x-text="'Role: ' + org.role"></p>
                     <div class="flex gap-2">
-                        <a :href="`/${org.slug}/contents`"
+                        <a :href="`/organizations/${org.slug}/contents`"
                             class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                            Contents
-                        </a>
-                        <a :href="`/${org.slug}/playlists`"
-                            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
-                            Playlists
+                            Manage Contents
                         </a>
                     </div>
                 </div>

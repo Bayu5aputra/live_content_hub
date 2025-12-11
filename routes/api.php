@@ -23,10 +23,8 @@ Route::post('/register', [AuthController::class, 'register'])->name('api.registe
 Route::prefix('display')
     ->name('api.display.')
     ->group(function () {
-
         Route::get('/{organization:slug}', [DisplayController::class, 'show'])
             ->name('show');
-
         Route::get('/{organization:slug}/playlist/{playlist}', [DisplayController::class, 'showPlaylist'])
             ->name('playlist');
     });
@@ -51,23 +49,33 @@ Route::middleware('auth:sanctum')->group(function () {
     | Super Admin Routes
     |--------------------------------------------------------------------------
     */
-    Route::middleware('super.admin')
-        ->prefix('admin')
-        ->name('api.admin.')
+    Route::prefix('super-admin')
+        ->name('api.super-admin.')
         ->group(function () {
-
             // Organizations CRUD
-            Route::apiResource('organizations', OrganizationController::class)
-                ->names('organizations');
+            Route::get('organizations', [OrganizationController::class, 'index'])
+                ->name('organizations.index');
+
+            Route::post('organizations', [OrganizationController::class, 'store'])
+                ->name('organizations.store');
+
+            Route::get('organizations/{organization:slug}', [OrganizationController::class, 'show'])
+                ->name('organizations.show');
+
+            Route::put('organizations/{organization:slug}', [OrganizationController::class, 'update'])
+                ->name('organizations.update');
+
+            Route::delete('organizations/{organization:slug}', [OrganizationController::class, 'destroy'])
+                ->name('organizations.destroy');
 
             // Manage users in organization
-            Route::post('organizations/{organization}/users', [OrganizationController::class, 'addUser'])
+            Route::post('organizations/{organization:slug}/users', [OrganizationController::class, 'addUser'])
                 ->name('organizations.users.add');
 
-            Route::delete('organizations/{organization}/users/{user}', [OrganizationController::class, 'removeUser'])
+            Route::delete('organizations/{organization:slug}/users/{user}', [OrganizationController::class, 'removeUser'])
                 ->name('organizations.users.remove');
 
-            Route::patch('organizations/{organization}/toggle-status', [OrganizationController::class, 'toggleStatus'])
+            Route::patch('organizations/{organization:slug}/toggle-status', [OrganizationController::class, 'toggleStatus'])
                 ->name('organizations.toggle-status');
         });
 
@@ -80,38 +88,23 @@ Route::middleware('auth:sanctum')->group(function () {
         ->prefix('organizations/{organization:slug}')
         ->name('api.organizations.')
         ->group(function () {
-
-            /*
-            |--------------------------------------------------------------------------
-            | Contents
-            |--------------------------------------------------------------------------
-            */
+            // Contents
             Route::apiResource('contents', ContentController::class)
                 ->names('contents');
-
             Route::post('contents/reorder', [ContentController::class, 'reorder'])
                 ->name('contents.reorder');
-
             Route::patch('contents/{content}/toggle-status', [ContentController::class, 'toggleStatus'])
                 ->name('contents.toggle-status');
 
-            /*
-            |--------------------------------------------------------------------------
-            | Playlists
-            |--------------------------------------------------------------------------
-            */
+            // Playlists
             Route::apiResource('playlists', PlaylistController::class)
                 ->names('playlists');
-
             Route::post('playlists/{playlist}/contents', [PlaylistController::class, 'addContent'])
                 ->name('playlists.contents.add');
-
             Route::delete('playlists/{playlist}/contents/{content}', [PlaylistController::class, 'removeContent'])
                 ->name('playlists.contents.remove');
-
             Route::post('playlists/{playlist}/reorder', [PlaylistController::class, 'reorderContents'])
                 ->name('playlists.reorder');
-
             Route::patch('playlists/{playlist}/toggle-status', [PlaylistController::class, 'toggleStatus'])
                 ->name('playlists.toggle-status');
         });

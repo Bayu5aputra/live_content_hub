@@ -30,49 +30,53 @@ Route::get('/dashboard', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Admin Routes
+| Super Admin Routes
 |--------------------------------------------------------------------------
 */
-Route::prefix('admin')->name('admin.')->group(function () {
+Route::prefix('super-admin')->name('super-admin.')->group(function () {
     Route::get('/organizations', function () {
-        return view('admin.organizations.index');
+        return view('super-admin.organizations.index');
     })->name('organizations.index');
 
     Route::get('/organizations/create', function () {
-        return view('admin.organizations.create');
+        return view('super-admin.organizations.create');
     })->name('organizations.create');
+
+    Route::get('/organizations/{slug}/edit', function ($slug) {
+        return view('super-admin.organizations.edit', ['slug' => $slug]);
+    })->name('organizations.edit');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Organization Routes
+| Organization Admin Routes
 |--------------------------------------------------------------------------
 */
-Route::prefix('{organization}')->group(function () {
+Route::prefix('organizations/{organization}')->name('organization.')->group(function () {
     // Contents
     Route::get('/contents', function ($organization) {
         return view('organization.contents.index', ['organization' => $organization]);
-    })->name('organization.contents.index');
+    })->name('contents.index');
 
     Route::get('/contents/create', function ($organization) {
         return view('organization.contents.create', ['organization' => $organization]);
-    })->name('organization.contents.create');
+    })->name('contents.create');
 
     // Playlists
     Route::get('/playlists', function ($organization) {
         return view('organization.playlists.index', ['organization' => $organization]);
-    })->name('organization.playlists.index');
+    })->name('playlists.index');
 
     Route::get('/playlists/create', function ($organization) {
         return view('organization.playlists.create', ['organization' => $organization]);
-    })->name('organization.playlists.create');
+    })->name('playlists.create');
 
     Route::get('/playlists/{playlist}', function ($organization, $playlist) {
         return view('organization.playlists.show', [
             'organization' => $organization,
             'playlist' => $playlist
         ]);
-    })->name('organization.playlists.show');
+    })->name('playlists.show');
 });
 
 /*
@@ -80,11 +84,11 @@ Route::prefix('{organization}')->group(function () {
 | Public Display Routes
 |--------------------------------------------------------------------------
 */
-Route::get('/{organization}/display', function ($organization) {
+Route::get('/display/{organization}', function ($organization) {
     return view('display.show', ['organization' => $organization]);
 })->name('display.show');
 
-Route::get('/{organization}/display/{playlist}', function ($organization, $playlist) {
+Route::get('/display/{organization}/{playlist}', function ($organization, $playlist) {
     return view('display.show', [
         'organization' => $organization,
         'playlist' => $playlist
