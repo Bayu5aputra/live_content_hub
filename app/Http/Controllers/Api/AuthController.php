@@ -96,4 +96,6 @@ class AuthController extends Controller
 
         return new UserResource($user);
     }
+
+
 }
