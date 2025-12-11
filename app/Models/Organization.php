@@ -33,6 +33,11 @@ class Organization extends Model
         });
     }
 
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
+
     public function users()
     {
         return $this->belongsToMany(User::class, 'organization_users')
@@ -50,8 +55,8 @@ class Organization extends Model
         return $this->hasMany(Playlist::class);
     }
 
-    public function getRouteKeyName()
+    public function scopeActive($query)
     {
-        return 'slug';
+        return $query->where('is_active', true);
     }
 }

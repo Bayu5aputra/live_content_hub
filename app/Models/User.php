@@ -1,48 +1,54 @@
 <?php
-
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasApiTokens;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function organizations()
+    {
+        return $this->belongsToMany(Organization::class, 'organization_users')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function hasAccessToOrganization($organizationId, $requiredRole = null)
+    {
+        $org = $this->organizations()->where('organization_id', $organizationId)->first();
+
+        if (!$org) {
+            return false;
+        }
+
+        if ($requiredRole) {
+            $roleHierarchy = ['viewer' => 1, 'editor' => 2, 'admin' => 3];
+            return $roleHierarchy[$org->pivot->role] >= $roleHierarchy[$requiredRole];
+        }
+
+        return true;
     }
 }
