@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Organization;
 use App\Models\Content;
 use Illuminate\Http\Request;
@@ -19,19 +20,11 @@ class ContentController extends Controller
             ->ordered()
             ->paginate(15);
 
-        return view('organization.contents.index', compact('organization', 'contents'));
+        return response()->json($contents);
     }
 
     /**
-     * Show the form for creating a new content
-     */
-    public function create(Organization $organization)
-    {
-        return view('organization.contents.create', compact('organization'));
-    }
-
-    /**
-     * Store a newly created content in storage
+     * Store a newly created content
      */
     public function store(Request $request, Organization $organization)
     {
@@ -39,8 +32,8 @@ class ContentController extends Controller
             'type' => 'required|in:image,video,pdf',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'file' => 'required|file|max:51200', // 50MB
-            'thumbnail' => 'nullable|image|max:2048', // 2MB
+            'file' => 'required|file|max:51200', // 50MB max
+            'thumbnail' => 'nullable|image|max:2048', // 2MB max
             'duration' => 'required|integer|min:1',
             'order' => 'nullable|integer',
             'is_active' => 'boolean',
@@ -64,12 +57,13 @@ class ContentController extends Controller
 
         $validated['organization_id'] = $organization->id;
         $validated['order'] = $validated['order'] ?? $organization->contents()->max('order') + 1;
-        $validated['is_active'] = $request->has('is_active') ? true : false;
 
-        Content::create($validated);
+        $content = Content::create($validated);
 
-        return redirect()->route('organization.contents.index', $organization)
-            ->with('success', 'Content created successfully!');
+        return response()->json([
+            'message' => 'Content created successfully',
+            'content' => $content,
+        ], 201);
     }
 
     /**
@@ -79,35 +73,22 @@ class ContentController extends Controller
     {
         // Check if content belongs to organization
         if ($content->organization_id !== $organization->id) {
-            abort(404);
+            return response()->json(['message' => 'Content not found'], 404);
         }
 
         $content->load('playlists');
 
-        return view('organization.contents.show', compact('organization', 'content'));
+        return response()->json($content);
     }
 
     /**
-     * Show the form for editing the specified content
-     */
-    public function edit(Organization $organization, Content $content)
-    {
-        // Check if content belongs to organization
-        if ($content->organization_id !== $organization->id) {
-            abort(404);
-        }
-
-        return view('organization.contents.edit', compact('organization', 'content'));
-    }
-
-    /**
-     * Update the specified content in storage
+     * Update the specified content
      */
     public function update(Request $request, Organization $organization, Content $content)
     {
         // Check if content belongs to organization
         if ($content->organization_id !== $organization->id) {
-            abort(404);
+            return response()->json(['message' => 'Content not found'], 404);
         }
 
         $validated = $request->validate([
@@ -147,22 +128,22 @@ class ContentController extends Controller
             $validated['thumbnail_url'] = Storage::url($thumbnailPath);
         }
 
-        $validated['is_active'] = $request->has('is_active') ? true : false;
-
         $content->update($validated);
 
-        return redirect()->route('organization.contents.index', $organization)
-            ->with('success', 'Content updated successfully!');
+        return response()->json([
+            'message' => 'Content updated successfully',
+            'content' => $content,
+        ]);
     }
 
     /**
-     * Remove the specified content from storage
+     * Remove the specified content
      */
     public function destroy(Organization $organization, Content $content)
     {
         // Check if content belongs to organization
         if ($content->organization_id !== $organization->id) {
-            abort(404);
+            return response()->json(['message' => 'Content not found'], 404);
         }
 
         // Delete files
@@ -175,12 +156,13 @@ class ContentController extends Controller
 
         $content->delete();
 
-        return redirect()->route('organization.contents.index', $organization)
-            ->with('success', 'Content deleted successfully!');
+        return response()->json([
+            'message' => 'Content deleted successfully',
+        ]);
     }
 
     /**
-     * Reorder contents (AJAX)
+     * Reorder contents
      */
     public function reorder(Request $request, Organization $organization)
     {
@@ -197,8 +179,27 @@ class ContentController extends Controller
         }
 
         return response()->json([
-            'success' => true,
             'message' => 'Contents reordered successfully',
+        ]);
+    }
+
+    /**
+     * Toggle content active status
+     */
+    public function toggleStatus(Organization $organization, Content $content)
+    {
+        // Check if content belongs to organization
+        if ($content->organization_id !== $organization->id) {
+            return response()->json(['message' => 'Content not found'], 404);
+        }
+
+        $content->update([
+            'is_active' => !$content->is_active,
+        ]);
+
+        return response()->json([
+            'message' => 'Content status updated successfully',
+            'content' => $content,
         ]);
     }
 }

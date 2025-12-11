@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -15,20 +16,14 @@ class OrganizationController extends Controller
      */
     public function index()
     {
-        $organizations = Organization::with('users')->paginate(15);
-        return view('admin.organizations.index', compact('organizations'));
+        $organizations = Organization::with(['users', 'contents', 'playlists'])
+            ->paginate(15);
+
+        return response()->json($organizations);
     }
 
     /**
-     * Show the form for creating a new organization
-     */
-    public function create()
-    {
-        return view('admin.organizations.create');
-    }
-
-    /**
-     * Store a newly created organization in storage
+     * Store a newly created organization
      */
     public function store(Request $request)
     {
@@ -36,34 +31,20 @@ class OrganizationController extends Controller
             'name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255|unique:organizations',
             'domain' => 'nullable|string|max:255',
-            'admin_email' => 'required|email',
-            'admin_name' => 'required|string|max:255',
-            'admin_password' => 'required|string|min:8',
+            'is_active' => 'boolean',
         ]);
 
-        $organization = Organization::create([
-            'name' => $validated['name'],
-            'slug' => $validated['slug'] ?? Str::slug($validated['name']),
-            'domain' => $validated['domain'],
-            'is_active' => true,
-        ]);
+        $validated['slug'] = $validated['slug'] ?? Str::slug($validated['name']);
 
-        // Create admin user
-        $user = User::firstOrCreate(
-            ['email' => $validated['admin_email']],
-            [
-                'name' => $validated['admin_name'],
-                'password' => Hash::make($validated['admin_password']),
-            ]
-        );
+        $organization = Organization::create($validated);
 
-        // Attach user to organization as admin
-        $organization->users()->syncWithoutDetaching([
-            $user->id => ['role' => 'admin']
-        ]);
+        // Attach current user as admin
+        $organization->users()->attach($request->user()->id, ['role' => 'admin']);
 
-        return redirect()->route('admin.organizations.index')
-            ->with('success', 'Organization created successfully!');
+        return response()->json([
+            'message' => 'Organization created successfully',
+            'organization' => $organization->load('users'),
+        ], 201);
     }
 
     /**
@@ -72,19 +53,12 @@ class OrganizationController extends Controller
     public function show(Organization $organization)
     {
         $organization->load(['users', 'contents', 'playlists']);
-        return view('admin.organizations.show', compact('organization'));
+
+        return response()->json($organization);
     }
 
     /**
-     * Show the form for editing the specified organization
-     */
-    public function edit(Organization $organization)
-    {
-        return view('admin.organizations.edit', compact('organization'));
-    }
-
-    /**
-     * Update the specified organization in storage
+     * Update the specified organization
      */
     public function update(Request $request, Organization $organization)
     {
@@ -97,19 +71,22 @@ class OrganizationController extends Controller
 
         $organization->update($validated);
 
-        return redirect()->route('admin.organizations.index')
-            ->with('success', 'Organization updated successfully!');
+        return response()->json([
+            'message' => 'Organization updated successfully',
+            'organization' => $organization,
+        ]);
     }
 
     /**
-     * Remove the specified organization from storage
+     * Remove the specified organization
      */
     public function destroy(Organization $organization)
     {
         $organization->delete();
 
-        return redirect()->route('admin.organizations.index')
-            ->with('success', 'Organization deleted successfully!');
+        return response()->json([
+            'message' => 'Organization deleted successfully',
+        ]);
     }
 
     /**
@@ -136,7 +113,10 @@ class OrganizationController extends Controller
             $user->id => ['role' => $validated['role']]
         ]);
 
-        return back()->with('success', 'User added to organization successfully!');
+        return response()->json([
+            'message' => 'User added to organization successfully',
+            'user' => $user,
+        ]);
     }
 
     /**
@@ -146,6 +126,23 @@ class OrganizationController extends Controller
     {
         $organization->users()->detach($user->id);
 
-        return back()->with('success', 'User removed from organization successfully!');
+        return response()->json([
+            'message' => 'User removed from organization successfully',
+        ]);
+    }
+
+    /**
+     * Toggle organization active status
+     */
+    public function toggleStatus(Organization $organization)
+    {
+        $organization->update([
+            'is_active' => !$organization->is_active,
+        ]);
+
+        return response()->json([
+            'message' => 'Organization status updated successfully',
+            'organization' => $organization,
+        ]);
     }
 }

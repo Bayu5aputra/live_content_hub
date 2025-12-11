@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Organization;
 use App\Models\Playlist;
 use Illuminate\Http\Request;
@@ -9,40 +10,9 @@ use Illuminate\Http\Request;
 class DisplayController extends Controller
 {
     /**
-     * Show the display page (Web View)
+     * Get organization content for display
      */
     public function show(Organization $organization, Playlist $playlist = null)
-    {
-        if (!$organization->is_active) {
-            abort(404, 'Organization not found or inactive');
-        }
-
-        if ($playlist) {
-            // Check if playlist belongs to organization
-            if ($playlist->organization_id !== $organization->id || !$playlist->is_active) {
-                abort(404, 'Playlist not found or inactive');
-            }
-
-            $contents = $playlist->contents()
-                ->where('contents.is_active', true)
-                ->orderByPivot('order')
-                ->get();
-            $loop = $playlist->loop;
-        } else {
-            $contents = $organization->contents()
-                ->active()
-                ->ordered()
-                ->get();
-            $loop = true;
-        }
-
-        return view('display.show', compact('organization', 'playlist', 'contents', 'loop'));
-    }
-
-    /**
-     * Get content data as JSON (for AJAX)
-     */
-    public function api(Organization $organization, Playlist $playlist = null)
     {
         if (!$organization->is_active) {
             return response()->json(['error' => 'Organization not found'], 404);
@@ -91,5 +61,13 @@ class DisplayController extends Controller
             'loop' => $loop,
             'total' => $data->count(),
         ]);
+    }
+
+    /**
+     * Get specific playlist for display
+     */
+    public function showPlaylist(Organization $organization, Playlist $playlist)
+    {
+        return $this->show($organization, $playlist);
     }
 }

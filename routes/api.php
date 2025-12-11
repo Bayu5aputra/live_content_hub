@@ -24,7 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
 
     // Super Admin - Organization Management
-    Route::prefix('admin')->group(function () {
+    Route::middleware('super.admin')->prefix('admin')->group(function () {
         Route::apiResource('organizations', OrganizationController::class);
         Route::post('organizations/{organization}/users', [OrganizationController::class, 'addUser']);
         Route::delete('organizations/{organization}/users/{user}', [OrganizationController::class, 'removeUser']);
@@ -32,7 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Organization - Content & Playlist Management
-    Route::prefix('organizations/{organization:slug}')->group(function () {
+    Route::middleware('org.access:editor')->prefix('organizations/{organization:slug}')->group(function () {
         // Contents
         Route::apiResource('contents', ContentController::class);
         Route::post('contents/reorder', [ContentController::class, 'reorder']);

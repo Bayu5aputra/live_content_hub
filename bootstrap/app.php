@@ -12,19 +12,24 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+
         // Sanctum middleware untuk API
         $middleware->statefulApi();
 
-        // Atau gunakan cara ini:
+        // Atau dapat juga menggunakan cara ini:
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
 
         // Middleware aliases
         $middleware->alias([
-            'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            'verified'    => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            'org.access'  => \App\Http\Middleware\CheckOrganizationAccess::class,
+            'org.owner'   => \App\Http\Middleware\CheckOrganizationOwner::class,
+            'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
-    })->create();
+    })
+    ->create();
