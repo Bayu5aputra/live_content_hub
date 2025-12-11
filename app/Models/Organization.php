@@ -38,6 +38,9 @@ class Organization extends Model
         return 'slug';
     }
 
+    /**
+     * Relationship: Organization has many Users through pivot
+     */
     public function users()
     {
         return $this->belongsToMany(User::class, 'organization_users')
@@ -45,18 +48,51 @@ class Organization extends Model
             ->withTimestamps();
     }
 
+    /**
+     * Relationship: Organization has many Contents
+     */
     public function contents()
     {
         return $this->hasMany(Content::class);
     }
 
+    /**
+     * Relationship: Organization has many Playlists
+     */
     public function playlists()
     {
         return $this->hasMany(Playlist::class);
     }
 
+    /**
+     * Scope: Only active organizations
+     */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Get admins of this organization
+     */
+    public function admins()
+    {
+        return $this->users()->wherePivot('role', 'admin');
+    }
+
+    /**
+     * Get editors of this organization
+     */
+    public function editors()
+    {
+        return $this->users()->wherePivot('role', 'editor');
+    }
+
+    /**
+     * Get viewers of this organization
+     */
+    public function viewers()
+    {
+        return $this->users()->wherePivot('role', 'viewer');
     }
 }

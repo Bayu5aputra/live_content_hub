@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,11 +22,6 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -46,22 +42,18 @@ class User extends Authenticatable
 
     /**
      * Check if user has access to an organization with optional role check
-     *
-     * @param int $organizationId
-     * @param string|null $requiredRole
-     * @return bool
      */
-    public function hasAccessToOrganization($organizationId, $requiredRole = null)
+    public function hasAccessToOrganization(int $organizationId, ?string $requiredRole = null): bool
     {
-        $org = $this->organizations()->where('organization_id', $organizationId)->first();
+        $organization = $this->organizations()->where('organizations.id', $organizationId)->first();
 
-        if (!$org) {
+        if (!$organization) {
             return false;
         }
 
         if ($requiredRole) {
             $roleHierarchy = ['viewer' => 1, 'editor' => 2, 'admin' => 3];
-            $userRole = $org->pivot->role ?? 'viewer';
+            $userRole = $organization->pivot->role ?? 'viewer';
 
             return isset($roleHierarchy[$userRole]) &&
                    isset($roleHierarchy[$requiredRole]) &&
@@ -73,34 +65,34 @@ class User extends Authenticatable
 
     /**
      * Get user's role in a specific organization
-     *
-     * @param int $organizationId
-     * @return string|null
      */
-    public function getRoleInOrganization($organizationId)
+    public function getRoleInOrganization(int $organizationId): ?string
     {
-        $org = $this->organizations()->where('organization_id', $organizationId)->first();
-        return $org ? $org->pivot->role : null;
+        $organization = $this->organizations()->where('organizations.id', $organizationId)->first();
+        return $organization ? $organization->pivot->role : null;
     }
 
     /**
      * Check if user is admin in any organization
-     *
-     * @return bool
      */
-    public function isAdmin()
+    public function isAdmin(): bool
     {
         return $this->organizations()->wherePivot('role', 'admin')->exists();
     }
 
     /**
      * Check if user is admin in specific organization
-     *
-     * @param int $organizationId
-     * @return bool
      */
-    public function isAdminOf($organizationId)
+    public function isAdminOf(int $organizationId): bool
     {
         return $this->hasAccessToOrganization($organizationId, 'admin');
+    }
+
+    /**
+     * Check if user is super admin (has admin role in any organization)
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->isAdmin();
     }
 }
