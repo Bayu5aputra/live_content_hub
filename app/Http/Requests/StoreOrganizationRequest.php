@@ -11,7 +11,8 @@ class StoreOrganizationRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        // User harus admin untuk membuat organization
+        return $this->user() && $this->user()->isAdmin();
     }
 
     /**
@@ -22,7 +23,26 @@ class StoreOrganizationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:organizations,slug|alpha_dash',
+            'domain' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+        ];
+    }
+
+    /**
+     * Get custom messages for validator errors.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Organization name is required',
+            'name.max' => 'Organization name must not exceed 255 characters',
+            'slug.unique' => 'This slug is already taken',
+            'slug.alpha_dash' => 'Slug can only contain letters, numbers, dashes and underscores',
+            'domain.max' => 'Domain must not exceed 255 characters',
         ];
     }
 }

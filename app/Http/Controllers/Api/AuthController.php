@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -33,7 +34,7 @@ class AuthController extends Controller
             'message' => 'User registered successfully',
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user,
+            'user' => new UserResource($user),
         ], 201);
     }
 
@@ -64,7 +65,7 @@ class AuthController extends Controller
             'message' => 'Login successful',
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user,
+            'user' => new UserResource($user->load('organizations')),
         ]);
     }
 
@@ -87,8 +88,6 @@ class AuthController extends Controller
     {
         $user = $request->user()->load('organizations');
 
-        return response()->json([
-            'user' => $user,
-        ]);
+        return new UserResource($user);
     }
 }

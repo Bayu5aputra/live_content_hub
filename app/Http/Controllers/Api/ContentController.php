@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreContentRequest;
+use App\Http\Requests\UpdateContentRequest;
+use App\Http\Resources\ContentCollection;
+use App\Http\Resources\ContentResource;
 use App\Models\Organization;
 use App\Models\Content;
 use Illuminate\Http\Request;
@@ -17,27 +21,19 @@ class ContentController extends Controller
     {
         $contents = $organization->contents()
             ->with('playlists')
+            ->withCount('playlists')
             ->ordered()
             ->paginate(15);
 
-        return response()->json($contents);
+        return new ContentCollection($contents);
     }
 
     /**
      * Store a newly created content
      */
-    public function store(Request $request, Organization $organization)
+    public function store(StoreContentRequest $request, Organization $organization)
     {
-        $validated = $request->validate([
-            'type' => 'required|in:image,video,pdf',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'file' => 'required|file|max:51200', // 50MB max
-            'thumbnail' => 'nullable|image|max:2048', // 2MB max
-            'duration' => 'required|integer|min:1',
-            'order' => 'nullable|integer',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         // Handle file upload
         if ($request->hasFile('file')) {
@@ -60,10 +56,9 @@ class ContentController extends Controller
 
         $content = Content::create($validated);
 
-        return response()->json([
-            'message' => 'Content created successfully',
-            'content' => $content,
-        ], 201);
+        return (new ContentResource($content->load('organization')))
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
@@ -76,31 +71,23 @@ class ContentController extends Controller
             return response()->json(['message' => 'Content not found'], 404);
         }
 
-        $content->load('playlists');
+        $content->load(['playlists', 'organization'])
+            ->loadCount('playlists');
 
-        return response()->json($content);
+        return new ContentResource($content);
     }
 
     /**
      * Update the specified content
      */
-    public function update(Request $request, Organization $organization, Content $content)
+    public function update(UpdateContentRequest $request, Organization $organization, Content $content)
     {
         // Check if content belongs to organization
         if ($content->organization_id !== $organization->id) {
             return response()->json(['message' => 'Content not found'], 404);
         }
 
-        $validated = $request->validate([
-            'type' => 'sometimes|in:image,video,pdf',
-            'title' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'file' => 'sometimes|file|max:51200',
-            'thumbnail' => 'sometimes|image|max:2048',
-            'duration' => 'sometimes|integer|min:1',
-            'order' => 'sometimes|integer',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         // Handle file upload
         if ($request->hasFile('file')) {
@@ -130,10 +117,7 @@ class ContentController extends Controller
 
         $content->update($validated);
 
-        return response()->json([
-            'message' => 'Content updated successfully',
-            'content' => $content,
-        ]);
+        return new ContentResource($content->fresh(['organization', 'playlists']));
     }
 
     /**
@@ -197,9 +181,6 @@ class ContentController extends Controller
             'is_active' => !$content->is_active,
         ]);
 
-        return response()->json([
-            'message' => 'Content status updated successfully',
-            'content' => $content,
-        ]);
+        return new ContentResource($content);
     }
 }

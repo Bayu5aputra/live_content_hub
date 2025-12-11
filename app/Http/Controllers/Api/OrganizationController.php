@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreOrganizationRequest;
+use App\Http\Requests\UpdateOrganizationRequest;
+use App\Http\Resources\OrganizationCollection;
+use App\Http\Resources\OrganizationResource;
+use App\Http\Resources\UserResource;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -17,22 +22,18 @@ class OrganizationController extends Controller
     public function index()
     {
         $organizations = Organization::with(['users', 'contents', 'playlists'])
+            ->withCount(['users', 'contents', 'playlists'])
             ->paginate(15);
 
-        return response()->json($organizations);
+        return new OrganizationCollection($organizations);
     }
 
     /**
      * Store a newly created organization
      */
-    public function store(Request $request)
+    public function store(StoreOrganizationRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:organizations',
-            'domain' => 'nullable|string|max:255',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         $validated['slug'] = $validated['slug'] ?? Str::slug($validated['name']);
 
@@ -41,10 +42,9 @@ class OrganizationController extends Controller
         // Attach current user as admin
         $organization->users()->attach($request->user()->id, ['role' => 'admin']);
 
-        return response()->json([
-            'message' => 'Organization created successfully',
-            'organization' => $organization->load('users'),
-        ], 201);
+        return (new OrganizationResource($organization->load('users')))
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
@@ -52,29 +52,22 @@ class OrganizationController extends Controller
      */
     public function show(Organization $organization)
     {
-        $organization->load(['users', 'contents', 'playlists']);
+        $organization->load(['users', 'contents', 'playlists'])
+            ->loadCount(['users', 'contents', 'playlists']);
 
-        return response()->json($organization);
+        return new OrganizationResource($organization);
     }
 
     /**
      * Update the specified organization
      */
-    public function update(Request $request, Organization $organization)
+    public function update(UpdateOrganizationRequest $request, Organization $organization)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:organizations,slug,' . $organization->id,
-            'domain' => 'nullable|string|max:255',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         $organization->update($validated);
 
-        return response()->json([
-            'message' => 'Organization updated successfully',
-            'organization' => $organization,
-        ]);
+        return new OrganizationResource($organization);
     }
 
     /**
@@ -115,7 +108,7 @@ class OrganizationController extends Controller
 
         return response()->json([
             'message' => 'User added to organization successfully',
-            'user' => $user,
+            'user' => new UserResource($user),
         ]);
     }
 
@@ -140,9 +133,6 @@ class OrganizationController extends Controller
             'is_active' => !$organization->is_active,
         ]);
 
-        return response()->json([
-            'message' => 'Organization status updated successfully',
-            'organization' => $organization,
-        ]);
+        return new OrganizationResource($organization);
     }
 }

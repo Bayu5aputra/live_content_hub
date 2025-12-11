@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePlaylistRequest;
+use App\Http\Requests\UpdatePlaylistRequest;
+use App\Http\Resources\PlaylistCollection;
+use App\Http\Resources\PlaylistResource;
 use App\Models\Organization;
 use App\Models\Playlist;
 use App\Models\Content;
@@ -20,29 +24,22 @@ class PlaylistController extends Controller
             ->withCount('contents')
             ->paginate(15);
 
-        return response()->json($playlists);
+        return new PlaylistCollection($playlists);
     }
 
     /**
      * Store a newly created playlist
      */
-    public function store(Request $request, Organization $organization)
+    public function store(StorePlaylistRequest $request, Organization $organization)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-            'loop' => 'boolean',
-        ]);
-
+        $validated = $request->validated();
         $validated['organization_id'] = $organization->id;
 
         $playlist = Playlist::create($validated);
 
-        return response()->json([
-            'message' => 'Playlist created successfully',
-            'playlist' => $playlist,
-        ], 201);
+        return (new PlaylistResource($playlist->load('organization')))
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
@@ -55,36 +52,30 @@ class PlaylistController extends Controller
             return response()->json(['message' => 'Playlist not found'], 404);
         }
 
-        $playlist->load(['contents' => function ($query) {
-            $query->orderByPivot('order');
-        }]);
+        $playlist->load([
+            'contents' => function ($query) {
+                $query->orderByPivot('order');
+            },
+            'organization'
+        ])->loadCount('contents');
 
-        return response()->json($playlist);
+        return new PlaylistResource($playlist);
     }
 
     /**
      * Update the specified playlist
      */
-    public function update(Request $request, Organization $organization, Playlist $playlist)
+    public function update(UpdatePlaylistRequest $request, Organization $organization, Playlist $playlist)
     {
         // Check if playlist belongs to organization
         if ($playlist->organization_id !== $organization->id) {
             return response()->json(['message' => 'Playlist not found'], 404);
         }
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-            'loop' => 'boolean',
-        ]);
-
+        $validated = $request->validated();
         $playlist->update($validated);
 
-        return response()->json([
-            'message' => 'Playlist updated successfully',
-            'playlist' => $playlist,
-        ]);
+        return new PlaylistResource($playlist->load('organization'));
     }
 
     /**
@@ -135,10 +126,7 @@ class PlaylistController extends Controller
 
         $playlist->contents()->attach($content->id, ['order' => $order]);
 
-        return response()->json([
-            'message' => 'Content added to playlist successfully',
-            'playlist' => $playlist->load('contents'),
-        ]);
+        return new PlaylistResource($playlist->load(['contents', 'organization']));
     }
 
     /**
@@ -178,10 +166,7 @@ class PlaylistController extends Controller
             $playlist->contents()->updateExistingPivot($item['id'], ['order' => $item['order']]);
         }
 
-        return response()->json([
-            'message' => 'Playlist contents reordered successfully',
-            'playlist' => $playlist->load('contents'),
-        ]);
+        return new PlaylistResource($playlist->load(['contents', 'organization']));
     }
 
     /**
@@ -198,9 +183,6 @@ class PlaylistController extends Controller
             'is_active' => !$playlist->is_active,
         ]);
 
-        return response()->json([
-            'message' => 'Playlist status updated successfully',
-            'playlist' => $playlist,
-        ]);
+        return new PlaylistResource($playlist);
     }
 }
