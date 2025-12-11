@@ -13,9 +13,27 @@
     register() {
         this.error = '';
         this.loading = true;
+        
+        // Validasi frontend
+        if (this.password !== this.password_confirmation) {
+            this.error = 'Password dan konfirmasi password tidak sama';
+            this.loading = false;
+            return;
+        }
+        
+        if (this.password.length < 8) {
+            this.error = 'Password minimal 8 karakter';
+            this.loading = false;
+            return;
+        }
+        
         fetch('/api/register', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             body: JSON.stringify({
                 name: this.name,
                 email: this.email,
@@ -23,16 +41,33 @@
                 password_confirmation: this.password_confirmation
             })
         })
-        .then(r => r.json())
-        .then(d => {
-            if (d.access_token) {
-                localStorage.setItem('token', d.access_token);
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json().then(data => ({
+                status: response.status,
+                data: data
+            }));
+        })
+        .then(result => {
+            console.log('Result:', result);
+            
+            if (result.status === 201 && result.data.access_token) {
+                localStorage.setItem('token', result.data.access_token);
                 window.location.href = '/dashboard';
             } else {
-                this.error = d.message || 'Registration failed';
+                // Handle validation errors
+                if (result.data.errors) {
+                    const errors = Object.values(result.data.errors).flat();
+                    this.error = errors.join(', ');
+                } else {
+                    this.error = result.data.message || 'Registration failed';
+                }
             }
         })
-        .catch(() => this.error = 'Network error')
+        .catch(err => {
+            console.error('Network error:', err);
+            this.error = 'Network error: Tidak dapat terhubung ke server. Pastikan server Laravel sudah berjalan.';
+        })
         .finally(() => this.loading = false);
     }
 }">
@@ -40,36 +75,40 @@
         <h2 class="text-2xl font-bold mb-6 text-center">Register</h2>
 
         <template x-if="error">
-            <div class="mb-4 p-3 bg-red-100 text-red-700 rounded" x-text="error"></div>
+            <div class="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm" x-text="error"></div>
         </template>
 
         <form @submit.prevent="register">
             <div class="mb-4">
                 <label class="block text-sm font-medium mb-2">Nama</label>
                 <input type="text" x-model="name" required
-                    class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nama lengkap">
             </div>
 
             <div class="mb-4">
                 <label class="block text-sm font-medium mb-2">Email</label>
                 <input type="email" x-model="email" required
-                    class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+                    placeholder="email@example.com">
             </div>
 
             <div class="mb-4">
                 <label class="block text-sm font-medium mb-2">Password</label>
                 <input type="password" x-model="password" required
-                    class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+                    placeholder="Minimal 8 karakter">
             </div>
 
             <div class="mb-6">
                 <label class="block text-sm font-medium mb-2">Konfirmasi Password</label>
                 <input type="password" x-model="password_confirmation" required
-                    class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ketik ulang password">
             </div>
 
             <button type="submit" :disabled="loading"
-                class="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+                class="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 <span x-show="!loading">Register</span>
                 <span x-show="loading">Loading...</span>
             </button>

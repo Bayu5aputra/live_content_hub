@@ -12,12 +12,22 @@
             window.location.href = '/login';
             return;
         }
+        this.loadOrganizations();
+    },
+    loadOrganizations() {
         fetch('/api/user', {
             headers: { 'Authorization': 'Bearer ' + this.token }
         })
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) throw new Error('Unauthorized');
+            return r.json();
+        })
         .then(d => {
             this.organizations = d.organizations || [];
+        })
+        .catch(() => {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
         })
         .finally(() => this.loading = false);
     }

@@ -11,21 +11,39 @@
     login() {
         this.error = '';
         this.loading = true;
+        
         fetch('/api/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: this.email, password: this.password })
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json' 
+            },
+            body: JSON.stringify({ 
+                email: this.email, 
+                password: this.password 
+            })
         })
-        .then(r => r.json())
-        .then(d => {
-            if (d.access_token) {
-                localStorage.setItem('token', d.access_token);
+        .then(r => {
+            console.log('Response status:', r.status);
+            return r.json().then(data => ({
+                status: r.status,
+                data: data
+            }));
+        })
+        .then(result => {
+            console.log('Result:', result);
+            
+            if (result.data.access_token) {
+                localStorage.setItem('token', result.data.access_token);
                 window.location.href = '/dashboard';
             } else {
-                this.error = d.message || 'Login failed';
+                this.error = result.data.message || 'Login failed';
             }
         })
-        .catch(() => this.error = 'Network error')
+        .catch(err => {
+            console.error('Login error:', err);
+            this.error = 'Network error: Tidak dapat terhubung ke server';
+        })
         .finally(() => this.loading = false);
     }
 }">
@@ -33,7 +51,7 @@
         <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
 
         <template x-if="error">
-            <div class="mb-4 p-3 bg-red-100 text-red-700 rounded" x-text="error"></div>
+            <div class="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm" x-text="error"></div>
         </template>
 
         <form @submit.prevent="login">

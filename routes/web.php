@@ -1,94 +1,92 @@
 <?php
 
-use App\Http\Controllers\OrganizationController;
-use App\Http\Controllers\ContentController;
-use App\Http\Controllers\PlaylistController;
-use App\Http\Controllers\DisplayController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| FIX: Tambahkan route login dummy agar Sanctum tidak error
-|--------------------------------------------------------------------------
-*/
-Route::get('/login', function () {
-    return response()->json([
-        'message' => 'Silakan login melalui API (POST /api/login)'
-    ], 401);
-})->name('login');
-
-/*
-|--------------------------------------------------------------------------
-| Home
+| Public Routes
 |--------------------------------------------------------------------------
 */
 Route::get('/', function () {
     return view('welcome');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Super Admin Routes (Harus Login + Super Admin)
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth', 'super.admin'])
-    ->prefix('admin')
-    ->name('admin.')
-    ->group(function () {
-        Route::resource('organizations', OrganizationController::class);
+Route::get('/login', function () {
+    return view('auth.login');
+})->name('login');
 
-        Route::post('organizations/{organization}/users', [OrganizationController::class, 'addUser'])
-            ->name('organizations.users.add');
-
-        Route::delete('organizations/{organization}/users/{user}', [OrganizationController::class, 'removeUser'])
-            ->name('organizations.users.remove');
-    });
+Route::get('/register', function () {
+    return view('auth.register');
+})->name('register');
 
 /*
 |--------------------------------------------------------------------------
-| Organization Routes (Harus Login + Akses ke Organization)
+| Protected Routes (Requires Login via Alpine/JavaScript)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])
-    ->prefix('{organization}')
-    ->name('organization.')
-    ->group(function () {
-
-        // Minimal Editor -> Content
-        Route::middleware('org.access:editor')->group(function () {
-            Route::resource('contents', ContentController::class);
-            Route::post('contents/reorder', [ContentController::class, 'reorder'])
-                ->name('contents.reorder');
-        });
-
-        // Minimal Editor -> Playlist
-        Route::middleware('org.access:editor')->group(function () {
-            Route::resource('playlists', PlaylistController::class);
-            Route::post('playlists/{playlist}/contents', [PlaylistController::class, 'addContent'])
-                ->name('playlists.contents.add');
-            Route::delete('playlists/{playlist}/contents/{content}', [PlaylistController::class, 'removeContent'])
-                ->name('playlists.contents.remove');
-        });
-    });
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->name('dashboard');
 
 /*
 |--------------------------------------------------------------------------
-| Public Display Routes (Tidak Perlu Auth)
+| Admin Routes
 |--------------------------------------------------------------------------
 */
-Route::get('/{organization}/display', [DisplayController::class, 'show'])
-    ->name('display.show');
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/organizations', function () {
+        return view('admin.organizations.index');
+    })->name('organizations.index');
 
-Route::get('/{organization}/display/{playlist}', [DisplayController::class, 'show'])
-    ->name('display.playlist');
+    Route::get('/organizations/create', function () {
+        return view('admin.organizations.create');
+    })->name('organizations.create');
+});
 
 /*
 |--------------------------------------------------------------------------
-| Public API for Display (Tidak Perlu Auth)
+| Organization Routes
 |--------------------------------------------------------------------------
 */
-Route::get('/{organization}/api/contents', [DisplayController::class, 'api'])
-    ->name('display.api');
+Route::prefix('{organization}')->group(function () {
+    // Contents
+    Route::get('/contents', function ($organization) {
+        return view('organization.contents.index', ['organization' => $organization]);
+    })->name('organization.contents.index');
 
-Route::get('/{organization}/api/playlist/{playlist}', [DisplayController::class, 'api'])
-    ->name('display.playlist.api');
+    Route::get('/contents/create', function ($organization) {
+        return view('organization.contents.create', ['organization' => $organization]);
+    })->name('organization.contents.create');
+
+    // Playlists
+    Route::get('/playlists', function ($organization) {
+        return view('organization.playlists.index', ['organization' => $organization]);
+    })->name('organization.playlists.index');
+
+    Route::get('/playlists/create', function ($organization) {
+        return view('organization.playlists.create', ['organization' => $organization]);
+    })->name('organization.playlists.create');
+
+    Route::get('/playlists/{playlist}', function ($organization, $playlist) {
+        return view('organization.playlists.show', [
+            'organization' => $organization,
+            'playlist' => $playlist
+        ]);
+    })->name('organization.playlists.show');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Public Display Routes
+|--------------------------------------------------------------------------
+*/
+Route::get('/{organization}/display', function ($organization) {
+    return view('display.show', ['organization' => $organization]);
+})->name('display.show');
+
+Route::get('/{organization}/display/{playlist}', function ($organization, $playlist) {
+    return view('display.show', [
+        'organization' => $organization,
+        'playlist' => $playlist
+    ]);
+})->name('display.playlist');

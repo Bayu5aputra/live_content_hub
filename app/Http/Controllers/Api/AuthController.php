@@ -61,11 +61,14 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // FIX: Load organizations safely
+        $user->load('organizations');
+
         return response()->json([
             'message' => 'Login successful',
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'user' => new UserResource($user->load('organizations')),
+            'user' => new UserResource($user),
         ]);
     }
 
@@ -86,7 +89,10 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
-        $user = $request->user()->load('organizations');
+        $user = $request->user();
+
+        // FIX: Load organizations safely
+        $user->load('organizations');
 
         return new UserResource($user);
     }

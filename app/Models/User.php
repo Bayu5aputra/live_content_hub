@@ -51,6 +51,11 @@ class User extends Authenticatable
             return false;
         }
 
+        // FIX: Check if pivot exists before accessing role
+        if (!$organization->pivot) {
+            return false;
+        }
+
         if ($requiredRole) {
             $roleHierarchy = ['viewer' => 1, 'editor' => 2, 'admin' => 3];
             $userRole = $organization->pivot->role ?? 'viewer';
@@ -69,7 +74,13 @@ class User extends Authenticatable
     public function getRoleInOrganization(int $organizationId): ?string
     {
         $organization = $this->organizations()->where('organizations.id', $organizationId)->first();
-        return $organization ? $organization->pivot->role : null;
+
+        // FIX: Check if organization and pivot exist
+        if (!$organization || !$organization->pivot) {
+            return null;
+        }
+
+        return $organization->pivot->role;
     }
 
     /**

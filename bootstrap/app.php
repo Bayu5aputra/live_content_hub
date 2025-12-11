@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Sanctum middleware untuk API
         $middleware->statefulApi();
 
-        // Atau dapat juga menggunakan cara ini:
+        // Pastikan request frontend dianggap stateful
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
@@ -27,6 +27,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'org.access'  => \App\Http\Middleware\CheckOrganizationAccess::class,
             'org.owner'   => \App\Http\Middleware\CheckOrganizationOwner::class,
             'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+        ]);
+
+        // Tambahkan ini (sesuai contoh pertama)
+        // Mengizinkan API dilewati dari CSRF protection
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

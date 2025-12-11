@@ -23,7 +23,22 @@ class UserResource extends JsonResource
             'updated_at' => $this->updated_at?->toISOString(),
 
             // Relationships
-            'organizations' => OrganizationResource::collection($this->whenLoaded('organizations')),
+            'organizations' => $this->when(
+                $this->relationLoaded('organizations'),
+                function () {
+                    return $this->organizations->map(function ($org) {
+                        return [
+                            'id' => $org->id,
+                            'name' => $org->name,
+                            'slug' => $org->slug,
+                            'domain' => $org->domain,
+                            'is_active' => $org->is_active,
+                            // FIX: Safely access pivot
+                            'role' => $org->pivot ? $org->pivot->role : null,
+                        ];
+                    });
+                }
+            ),
 
             // Pivot data when loaded through relationship
             'role' => $this->when(
