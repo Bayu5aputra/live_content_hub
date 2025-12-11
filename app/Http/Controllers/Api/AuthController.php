@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Models\Organization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -12,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /**
-     * Register a new user
+     * Register a new organization admin user
      */
     public function register(Request $request)
     {
@@ -20,18 +21,47 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
+            'organization_code' => 'required|string|exists:organizations,code',
+        ], [
+            'organization_code.required' => 'Organization code is required',
+            'organization_code.exists' => 'Invalid organization code',
         ]);
 
+        // Find organization by code
+        $organization = Organization::where('code', $validated['organization_code'])->first();
+
+        if (!$organization) {
+            throw ValidationException::withMessages([
+                'organization_code' => ['Invalid organization code.'],
+            ]);
+        }
+
+        // Check if organization is active
+        if (!$organization->is_active) {
+            throw ValidationException::withMessages([
+                'organization_code' => ['This organization is not active.'],
+            ]);
+        }
+
+        // Create user
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'is_super_admin' => false,
         ]);
 
+        // Attach user to organization as admin
+        $organization->users()->attach($user->id, ['role' => 'admin']);
+
+        // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Load organizations
+        $user->load('organizations');
+
         return response()->json([
-            'message' => 'User registered successfully',
+            'message' => 'User registered successfully as organization admin',
             'access_token' => $token,
             'token_type' => 'Bearer',
             'user' => new UserResource($user),
@@ -61,7 +91,7 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // FIX: Load organizations safely
+        // Load organizations
         $user->load('organizations');
 
         return response()->json([
@@ -69,6 +99,7 @@ class AuthController extends Controller
             'access_token' => $token,
             'token_type' => 'Bearer',
             'user' => new UserResource($user),
+            'is_super_admin' => $user->is_super_admin,
         ]);
     }
 
@@ -90,12 +121,8 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         $user = $request->user();
-
-        // FIX: Load organizations safely
         $user->load('organizations');
 
         return new UserResource($user);
     }
-
-
 }

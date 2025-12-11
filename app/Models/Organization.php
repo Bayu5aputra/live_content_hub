@@ -14,6 +14,7 @@ class Organization extends Model
     protected $fillable = [
         'name',
         'slug',
+        'code',
         'domain',
         'is_active',
     ];
@@ -29,6 +30,11 @@ class Organization extends Model
         static::creating(function ($organization) {
             if (empty($organization->slug)) {
                 $organization->slug = Str::slug($organization->name);
+            }
+
+            // Generate unique code if not provided
+            if (empty($organization->code)) {
+                $organization->code = strtoupper(Str::random(8));
             }
         });
     }

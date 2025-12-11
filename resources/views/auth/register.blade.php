@@ -8,6 +8,7 @@
     email: '',
     password: '',
     password_confirmation: '',
+    organization_code: '',
     error: '',
     loading: false,
     register() {
@@ -27,6 +28,12 @@
             return;
         }
         
+        if (!this.organization_code) {
+            this.error = 'Organization code wajib diisi';
+            this.loading = false;
+            return;
+        }
+        
         fetch('/api/register', {
             method: 'POST',
             headers: { 
@@ -38,7 +45,8 @@
                 name: this.name,
                 email: this.email,
                 password: this.password,
-                password_confirmation: this.password_confirmation
+                password_confirmation: this.password_confirmation,
+                organization_code: this.organization_code
             })
         })
         .then(response => {
@@ -72,7 +80,8 @@
     }
 }">
     <div class="bg-white rounded-lg shadow p-8">
-        <h2 class="text-2xl font-bold mb-6 text-center">Register</h2>
+        <h2 class="text-2xl font-bold mb-2 text-center">Register Organization Admin</h2>
+        <p class="text-sm text-gray-600 mb-6 text-center">Daftar sebagai admin organisasi dengan kode organisasi</p>
 
         <template x-if="error">
             <div class="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm" x-text="error"></div>
@@ -80,7 +89,7 @@
 
         <form @submit.prevent="register">
             <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">Nama</label>
+                <label class="block text-sm font-medium mb-2">Nama Lengkap</label>
                 <input type="text" x-model="name" required
                     class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
                     placeholder="Nama lengkap">
@@ -91,6 +100,15 @@
                 <input type="email" x-model="email" required
                     class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
                     placeholder="email@example.com">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Kode Organisasi</label>
+                <input type="text" x-model="organization_code" required
+                    class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 uppercase"
+                    placeholder="Masukkan kode organisasi"
+                    @input="organization_code = organization_code.toUpperCase()">
+                <p class="text-xs text-gray-500 mt-1">Hubungi super admin untuk mendapatkan kode organisasi</p>
             </div>
 
             <div class="mb-4">

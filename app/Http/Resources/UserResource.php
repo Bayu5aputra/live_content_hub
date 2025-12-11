@@ -18,6 +18,7 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'is_super_admin' => $this->is_super_admin,
             'email_verified_at' => $this->email_verified_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
@@ -31,9 +32,9 @@ class UserResource extends JsonResource
                             'id' => $org->id,
                             'name' => $org->name,
                             'slug' => $org->slug,
+                            'code' => $org->code,
                             'domain' => $org->domain,
                             'is_active' => $org->is_active,
-                            // FIX: Safely access pivot
                             'role' => $org->pivot ? $org->pivot->role : null,
                         ];
                     });
