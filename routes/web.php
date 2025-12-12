@@ -2,11 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| Public Routes
-|--------------------------------------------------------------------------
-*/
+// Public Routes
 Route::get('/', function () {
     return view('welcome');
 });
@@ -19,11 +15,7 @@ Route::get('/register', function () {
     return view('auth.register');
 })->name('register');
 
-/*
-|--------------------------------------------------------------------------
-| Protected Routes (Requires Login via Alpine/JavaScript)
-|--------------------------------------------------------------------------
-*/
+// Protected Routes (Requires Login via Alpine/JavaScript)
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->name('dashboard');
@@ -34,6 +26,7 @@ Route::get('/dashboard', function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('super-admin')->name('super-admin.')->group(function () {
+    // Manage Organizations
     Route::get('/organizations', function () {
         return view('super-admin.organizations.index');
     })->name('organizations.index');
@@ -45,6 +38,11 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
     Route::get('/organizations/{slug}/edit', function ($slug) {
         return view('super-admin.organizations.edit', ['slug' => $slug]);
     })->name('organizations.edit');
+
+    // Manage Super Admins
+    Route::get('/admins', function () {
+        return view('super-admin.admins.index');
+    })->name('admins.index');
 });
 
 /*
@@ -53,7 +51,7 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('organizations/{organization}')->name('organization.')->group(function () {
-    // Contents
+    // Contents Management
     Route::get('/contents', function ($organization) {
         return view('organization.contents.index', ['organization' => $organization]);
     })->name('contents.index');
@@ -62,7 +60,7 @@ Route::prefix('organizations/{organization}')->name('organization.')->group(func
         return view('organization.contents.create', ['organization' => $organization]);
     })->name('contents.create');
 
-    // Playlists
+    // Playlists Management
     Route::get('/playlists', function ($organization) {
         return view('organization.playlists.index', ['organization' => $organization]);
     })->name('playlists.index');
@@ -77,6 +75,16 @@ Route::prefix('organizations/{organization}')->name('organization.')->group(func
             'playlist' => $playlist
         ]);
     })->name('playlists.show');
+
+    // Users Management (Admin only)
+    Route::get('/users', function ($organization) {
+        return view('organization.users.index', ['organization' => $organization]);
+    })->name('users.index');
+
+    // View Contents (Read-only for regular users)
+    Route::get('/view-contents', function ($organization) {
+        return view('organization.contents.view', ['organization' => $organization]);
+    })->name('contents.view');
 });
 
 /*

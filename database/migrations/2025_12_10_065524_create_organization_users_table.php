@@ -12,7 +12,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->enum('role', ['admin', 'editor', 'viewer'])->default('viewer');
+
+            // Perubahan LANGSUNG di sini
+            $table->enum('role', ['admin', 'editor', 'viewer', 'user'])
+                  ->default('user');
+
             $table->timestamps();
 
             // Prevent duplicate entries

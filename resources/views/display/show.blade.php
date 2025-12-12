@@ -6,8 +6,43 @@
     <title>Display - {{ $organization }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        .watermark {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .fade-enter {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .fade-exit {
+            animation: fadeOut 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
 </head>
-<body class="bg-black">
+<body class="bg-black overflow-hidden">
     <div x-data="{
         contents: [],
         currentIndex: 0,
@@ -15,6 +50,7 @@
         orgSlug: '{{ $organization }}',
         playlistId: '{{ $playlist ?? '' }}',
         loop: true,
+        providerName: 'Digital Content Hub',
         init() {
             this.loadContents();
         },
@@ -60,7 +96,12 @@
         getCurrentContent() {
             return this.contents[this.currentIndex] || null;
         }
-    }" class="w-screen h-screen flex items-center justify-center">
+    }" class="w-screen h-screen flex items-center justify-center relative">
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <span x-text="providerName"></span>
+        </div>
 
         <template x-if="loading">
             <div class="text-white text-2xl">Loading...</div>
@@ -74,10 +115,13 @@
             <div class="w-full h-full relative">
                 <template x-for="(content, index) in contents" :key="content.id">
                     <div x-show="index === currentIndex"
-                        class="absolute inset-0 flex items-center justify-center"
-                        x-transition:enter="transition ease-out duration-300"
+                        class="absolute inset-0 flex items-center justify-center fade-enter"
+                        x-transition:enter="transition ease-out duration-500"
                         x-transition:enter-start="opacity-0"
-                        x-transition:enter-end="opacity-100">
+                        x-transition:enter-end="opacity-100"
+                        x-transition:leave="transition ease-in duration-500"
+                        x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0">
 
                         <!-- Image -->
                         <template x-if="content.type === 'image'">
@@ -89,8 +133,8 @@
                         <!-- Video -->
                         <template x-if="content.type === 'video'">
                             <video :src="content.file_url"
-                                class="max-w-full max-h-full"
-                                autoplay muted loop>
+                                class="max-w-full max-h-full object-contain"
+                                autoplay muted loop playsinline>
                             </video>
                         </template>
 
@@ -102,14 +146,6 @@
                         </template>
                     </div>
                 </template>
-
-                <!-- Info Overlay -->
-                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                    <h2 class="text-white text-2xl font-bold"
-                        x-text="getCurrentContent()?.title"></h2>
-                    <p class="text-white/80 text-sm"
-                        x-text="`${currentIndex + 1} / ${contents.length}`"></p>
-                </div>
             </div>
         </template>
     </div>

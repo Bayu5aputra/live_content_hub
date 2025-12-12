@@ -32,9 +32,6 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * Relationship: User belongs to many Organizations
-     */
     public function organizations()
     {
         return $this->belongsToMany(Organization::class, 'organization_users')
@@ -42,37 +39,26 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    /**
-     * Check if user is super admin
-     */
     public function isSuperAdmin(): bool
     {
         return $this->is_super_admin === true;
     }
 
-    /**
-     * Check if user has access to an organization with optional role check
-     */
     public function hasAccessToOrganization(int $organizationId, ?string $requiredRole = null): bool
     {
-        // Super admin has access to all organizations
         if ($this->isSuperAdmin()) {
             return true;
         }
 
         $organization = $this->organizations()->where('organizations.id', $organizationId)->first();
 
-        if (!$organization) {
-            return false;
-        }
-
-        if (!$organization->pivot) {
+        if (!$organization || !$organization->pivot) {
             return false;
         }
 
         if ($requiredRole) {
-            $roleHierarchy = ['viewer' => 1, 'editor' => 2, 'admin' => 3];
-            $userRole = $organization->pivot->role ?? 'viewer';
+            $roleHierarchy = ['user' => 1, 'viewer' => 2, 'editor' => 3, 'admin' => 4];
+            $userRole = $organization->pivot->role ?? 'user';
 
             return isset($roleHierarchy[$userRole]) &&
                    isset($roleHierarchy[$requiredRole]) &&
@@ -82,12 +68,8 @@ class User extends Authenticatable
         return true;
     }
 
-    /**
-     * Get user's role in a specific organization
-     */
     public function getRoleInOrganization(int $organizationId): ?string
     {
-        // Super admin always has admin role
         if ($this->isSuperAdmin()) {
             return 'admin';
         }
@@ -101,12 +83,8 @@ class User extends Authenticatable
         return $organization->pivot->role;
     }
 
-    /**
-     * Check if user is admin in any organization
-     */
     public function isAdmin(): bool
     {
-        // Super admin is always admin
         if ($this->isSuperAdmin()) {
             return true;
         }
@@ -114,11 +92,20 @@ class User extends Authenticatable
         return $this->organizations()->wherePivot('role', 'admin')->exists();
     }
 
-    /**
-     * Check if user is admin in specific organization
-     */
     public function isAdminOf(int $organizationId): bool
     {
         return $this->hasAccessToOrganization($organizationId, 'admin');
+    }
+
+    // Check if user has 'user' role (read-only)
+    public function isUserOf(int $organizationId): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return false;
+        }
+
+        $organization = $this->organizations()->where('organizations.id', $organizationId)->first();
+
+        return $organization && $organization->pivot->role === 'user';
     }
 }

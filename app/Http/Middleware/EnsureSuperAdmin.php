@@ -8,16 +8,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureSuperAdmin
 {
-    /**
-     * Handle an incoming request.
-     *
-     * Middleware to ensure user is a super admin (has admin role in any organization)
-     */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        // If user is not authenticated
         if (!$user) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -29,16 +23,16 @@ class EnsureSuperAdmin
             return redirect()->route('login')->with('error', 'Please login to continue');
         }
 
-        // Check if user is admin in any organization
-        if (!$user->isAdmin()) {
+        // Check if user is super admin
+        if (!$user->is_super_admin) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => 'Forbidden',
-                    'message' => 'You must be an admin to access this resource'
+                    'message' => 'You must be a super admin to access this resource'
                 ], 403);
             }
 
-            abort(403, 'You must be an admin to access this resource');
+            abort(403, 'You must be a super admin to access this resource');
         }
 
         return $next($request);
