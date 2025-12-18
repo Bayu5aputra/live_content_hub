@@ -17,17 +17,34 @@
              showMobileMenu: false,
              
              init() {
+                 console.log('Navbar Init - Token:', this.token ? 'EXISTS' : 'MISSING');
                  if (this.token) {
-                     fetch('/api/user', {
-                         headers: { 'Authorization': 'Bearer ' + this.token }
-                     })
-                     .then(r => r.json())
-                     .then(d => this.user = d)
-                     .catch(() => { 
-                         localStorage.removeItem('token'); 
-                         this.token = null; 
-                     });
+                     this.loadUser();
                  }
+             },
+             
+             loadUser() {
+                 fetch('/api/user', {
+                     headers: { 
+                         'Authorization': 'Bearer ' + this.token,
+                         'Accept': 'application/json'
+                     }
+                 })
+                 .then(r => r.json())
+                 .then(d => {
+                     console.log('Navbar - User loaded:', d);
+                     console.log('Navbar - is_super_admin:', d.is_super_admin);
+                     this.user = d;
+                 })
+                 .catch(err => { 
+                     console.error('Navbar - Failed to load user:', err);
+                     localStorage.removeItem('token'); 
+                     this.token = null; 
+                 });
+             },
+             
+             isSuperAdmin() {
+                 return this.user && (this.user.is_super_admin === true || this.user.is_super_admin === 1);
              },
              
              logout() {
@@ -49,7 +66,7 @@
                     </a>
 
                     <!-- Desktop Navigation - Super Admin -->
-                    <template x-if="token && user?.is_super_admin">
+                    <template x-if="token && isSuperAdmin()">
                         <div class="hidden md:flex items-center ml-10 space-x-4">
                             <a href="/dashboard"
                                class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition"
@@ -86,7 +103,7 @@
 
                     <template x-if="token && user">
                         <div class="flex items-center gap-4">
-                            <span class="text-sm text-gray-700 dark:text-gray-300 hidden md:block" x-text="user?.name"></span>
+                            <span class="text-sm text-gray-700 dark:text-gray-300 hidden md:block" x-text="user?.name || 'User'"></span>
                             <button @click="logout()"
                                     class="px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium">
                                 Logout
@@ -95,7 +112,7 @@
                     </template>
 
                     <!-- Mobile menu button -->
-                    <template x-if="token && user?.is_super_admin">
+                    <template x-if="token && isSuperAdmin()">
                         <button @click="showMobileMenu = !showMobileMenu"
                                 class="md:hidden p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +125,7 @@
         </div>
 
         <!-- Mobile Navigation - Super Admin -->
-        <template x-if="token && user?.is_super_admin">
+        <template x-if="token && isSuperAdmin()">
             <div x-show="showMobileMenu"
                  x-transition
                  class="md:hidden border-t border-gray-200 dark:border-gray-700">

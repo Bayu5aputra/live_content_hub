@@ -16,18 +16,16 @@ class SuperAdminController extends Controller
      */
     public function stats(Request $request)
     {
-        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+        if (!$request->user()->isSuperAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $stats = [
-            'total_organizations'   => Organization::count(),
-            'active_organizations'  => Organization::where('is_active', true)->count(),
-            'total_super_admins'    => User::where('is_super_admin', true)->count(),
-            'total_contents'        => Content::count(),
-        ];
-
-        return response()->json($stats);
+        return response()->json([
+            'total_organizations'  => Organization::count(),
+            'active_organizations' => Organization::where('is_active', true)->count(),
+            'total_super_admins'   => User::where('is_super_admin', true)->count(),
+            'total_contents'       => Content::count(),
+        ]);
     }
 
     /**
@@ -35,17 +33,15 @@ class SuperAdminController extends Controller
      */
     public function index(Request $request)
     {
-        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+        if (!$request->user()->isSuperAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $superAdmins = User::where('is_super_admin', true)
-            ->select('id', 'name', 'email', 'created_at')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
         return response()->json([
-            'data' => $superAdmins
+            'data' => User::where('is_super_admin', true)
+                ->select('id', 'name', 'email', 'created_at')
+                ->orderByDesc('created_at')
+                ->get()
         ]);
     }
 
@@ -54,30 +50,26 @@ class SuperAdminController extends Controller
      */
     public function store(Request $request)
     {
-        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+        if (!$request->user()->isSuperAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $validated = $request->validate([
+        $data = $request->validate([
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
         ]);
 
-        $superAdmin = User::create([
-            'name'            => $validated['name'],
-            'email'           => $validated['email'],
-            'password'        => Hash::make($validated['password']),
-            'is_super_admin'  => true,
+        $user = User::create([
+            'name'           => $data['name'],
+            'email'          => $data['email'],
+            'password'       => Hash::make($data['password']),
+            'is_super_admin' => true,
         ]);
 
         return response()->json([
             'message' => 'Super admin created successfully',
-            'data' => [
-                'id'    => $superAdmin->id,
-                'name'  => $superAdmin->name,
-                'email' => $superAdmin->email,
-            ]
+            'data'    => $user
         ], 201);
     }
 
@@ -86,7 +78,7 @@ class SuperAdminController extends Controller
      */
     public function updatePassword(Request $request, User $user)
     {
-        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+        if (!$request->user()->isSuperAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -94,17 +86,15 @@ class SuperAdminController extends Controller
             return response()->json(['message' => 'User is not a super admin'], 404);
         }
 
-        $validated = $request->validate([
+        $request->validate([
             'password' => 'required|string|min:8',
         ]);
 
         $user->update([
-            'password' => Hash::make($validated['password']),
+            'password' => Hash::make($request->password),
         ]);
 
-        return response()->json([
-            'message' => 'Password updated successfully'
-        ]);
+        return response()->json(['message' => 'Password updated successfully']);
     }
 
     /**
@@ -112,29 +102,20 @@ class SuperAdminController extends Controller
      */
     public function destroy(Request $request, User $user)
     {
-        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+        if (!$request->user()->isSuperAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if (!$user->is_super_admin) {
-            return response()->json(['message' => 'User is not a super admin'], 404);
-        }
-
-        // Prevent deleting yourself
         if ($user->id === $request->user()->id) {
             return response()->json(['message' => 'Cannot delete yourself'], 422);
         }
 
-        // Prevent deleting last super admin
-        $superAdminCount = User::where('is_super_admin', true)->count();
-        if ($superAdminCount <= 1) {
+        if (User::where('is_super_admin', true)->count() <= 1) {
             return response()->json(['message' => 'Cannot delete the last super admin'], 422);
         }
 
         $user->delete();
 
-        return response()->json([
-            'message' => 'Super admin deleted successfully'
-        ]);
+        return response()->json(['message' => 'Super admin deleted successfully']);
     }
 }
