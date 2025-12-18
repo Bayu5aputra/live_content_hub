@@ -13,8 +13,8 @@ return new class extends Migration
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
 
-            // Perubahan LANGSUNG di sini
-            $table->enum('role', ['admin', 'editor', 'viewer', 'user'])
+            // PERUBAHAN: Hanya 2 role - admin dan user
+            $table->enum('role', ['admin', 'user'])
                   ->default('user');
 
             $table->timestamps();

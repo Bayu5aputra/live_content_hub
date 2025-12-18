@@ -43,6 +43,11 @@ Route::prefix('super-admin')->name('super-admin.')->group(function () {
     Route::get('/admins', function () {
         return view('super-admin.admins.index');
     })->name('admins.index');
+
+    //Tambahab
+    Route::get('/organizations/{slug}/view', function ($slug) {
+        return view('super-admin.organizations.view', ['slug' => $slug]);
+    })->name('organizations.view');
 });
 
 /*

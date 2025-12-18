@@ -41,6 +41,24 @@ Route::middleware('auth:sanctum')->group(function () {
             // Manage Organizations
             Route::apiResource('organizations', OrganizationController::class)->names('organizations');
             Route::patch('organizations/{organization:slug}/toggle-status', [OrganizationController::class, 'toggleStatus'])->name('organizations.toggle-status');
+
+            // BARU: Manage Organization Admins
+            Route::get('organizations/{organization:slug}/admins', [OrganizationController::class, 'getAdmins'])->name('organizations.admins.index');
+            Route::post('organizations/{organization:slug}/admins', [OrganizationController::class, 'addAdmin'])->name('organizations.admins.store');
+            Route::delete('organizations/{organization:slug}/admins/{user}', [OrganizationController::class, 'removeAdmin'])->name('organizations.admins.destroy');
+            Route::post('organizations/{organization:slug}/admins/{user}/reset-password', [OrganizationController::class, 'resetAdminPassword'])->name('organizations.admins.reset-password');
+            // Super Admin Routes
+            Route::prefix('super-admin')
+                ->middleware('super.admin')
+                ->name('api.super-admin.')
+                ->group(function () {
+                    // TAMBAHKAN INI
+                    Route::get('stats', [SuperAdminController::class, 'stats'])->name('stats');
+
+                    // Manage Super Admins
+                    Route::get('admins', [SuperAdminController::class, 'index'])->name('admins.index');
+                    // ... rest of routes
+                });
         });
 
     // Organization Admin Routes - Manage Users
@@ -48,15 +66,21 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('org.owner')
         ->name('api.organizations.')
         ->group(function () {
-            Route::get('users', [OrganizationUserController::class, 'index'])->name('users.index');
-            Route::post('users', [OrganizationUserController::class, 'store'])->name('users.store');
-            Route::patch('users/{user}/role', [OrganizationUserController::class, 'updateRole'])->name('users.role');
-            Route::patch('users/{user}/password', [OrganizationUserController::class, 'updatePassword'])->name('users.password');
-            Route::delete('users/{user}', [OrganizationUserController::class, 'destroy'])->name('users.destroy');
+            // Manage Organization Admins (by Org Admin)
+            Route::get('admins', [OrganizationUserController::class, 'indexAdmins'])->name('admins.index');
+            Route::post('admins', [OrganizationUserController::class, 'storeAdmin'])->name('admins.store');
+            Route::delete('admins/{user}', [OrganizationUserController::class, 'destroyAdmin'])->name('admins.destroy');
+            Route::post('admins/{user}/reset-password', [OrganizationUserController::class, 'resetAdminPassword'])->name('admins.reset-password');
+
+            // Manage Users (Read-only users)
+            Route::get('users', [OrganizationUserController::class, 'indexUsers'])->name('users.index');
+            Route::post('users', [OrganizationUserController::class, 'storeUser'])->name('users.store');
+            Route::delete('users/{user}', [OrganizationUserController::class, 'destroyUser'])->name('users.destroy');
+            Route::post('users/{user}/reset-password', [OrganizationUserController::class, 'resetUserPassword'])->name('users.reset-password');
         });
 
-    // Organization Editor Routes - Content Management
-    Route::middleware('org.access:editor')
+    // Organization Admin Routes - Content Management
+    Route::middleware('org.access:admin')
         ->prefix('organizations/{organization:slug}')
         ->name('api.organizations.')
         ->group(function () {
@@ -76,7 +100,9 @@ Route::middleware('auth:sanctum')->group(function () {
         ->prefix('organizations/{organization:slug}')
         ->name('api.organizations.')
         ->group(function () {
-            Route::get('contents-view', [ContentController::class, 'index'])->name('contents.view');
-            Route::get('contents-view/{content}', [ContentController::class, 'show'])->name('contents.show-view');
+            Route::get('contents-readonly', [ContentController::class, 'index'])->name('contents.readonly');
+            Route::get('contents-readonly/{content}', [ContentController::class, 'show'])->name('contents.show-readonly');
+            Route::get('playlists-readonly', [PlaylistController::class, 'index'])->name('playlists.readonly');
+            Route::get('playlists-readonly/{playlist}', [PlaylistController::class, 'show'])->name('playlists.show-readonly');
         });
 });

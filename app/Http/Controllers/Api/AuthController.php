@@ -18,53 +18,50 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'organization_code' => 'required|string|exists:organizations,code',
+            'name'               => 'required|string|max:255',
+            'email'              => 'required|string|email|max:255|unique:users',
+            'password'           => 'required|string|min:8|confirmed',
+            'organization_code'  => 'required|string|exists:organizations,code',
         ], [
             'organization_code.required' => 'Organization code is required',
-            'organization_code.exists' => 'Invalid organization code',
+            'organization_code.exists'   => 'Invalid organization code',
         ]);
 
-        // Find organization by code
         $organization = Organization::where('code', $validated['organization_code'])->first();
 
-        if (!$organization) {
+        if (!$organization || !$organization->is_active) {
             throw ValidationException::withMessages([
-                'organization_code' => ['Invalid organization code.'],
+                'organization_code' => ['Invalid or inactive organization.'],
             ]);
         }
 
-        // Check if organization is active
-        if (!$organization->is_active) {
-            throw ValidationException::withMessages([
-                'organization_code' => ['This organization is not active.'],
-            ]);
-        }
-
-        // Create user
         $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'is_super_admin' => false,
+            'name'            => $validated['name'],
+            'email'           => $validated['email'],
+            'password'        => Hash::make($validated['password']),
+            'is_super_admin'  => false,
         ]);
 
-        // Attach user to organization as admin
         $organization->users()->attach($user->id, ['role' => 'admin']);
 
-        // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Load organizations with pivot
-        $user->load('organizations');
+        $user->load([
+            'organizations' => function ($query) {
+                $query->select(
+                    'organizations.id',
+                    'organizations.name',
+                    'organizations.slug',
+                    'organizations.code'
+                );
+            }
+        ]);
 
         return response()->json([
-            'message' => 'User registered successfully as organization admin',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => new UserResource($user),
+            'message'       => 'User registered successfully as organization admin',
+            'access_token'  => $token,
+            'token_type'    => 'Bearer',
+            'user'          => new UserResource($user),
         ], 201);
     }
 
@@ -74,7 +71,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'email'    => 'required|email',
             'password' => 'required',
         ]);
 
@@ -86,25 +83,32 @@ class AuthController extends Controller
             ]);
         }
 
-        // Delete old tokens
         $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Load organizations with pivot data
-        $user->load('organizations');
+        $user->load([
+            'organizations' => function ($query) {
+                $query->select(
+                    'organizations.id',
+                    'organizations.name',
+                    'organizations.slug',
+                    'organizations.code'
+                );
+            }
+        ]);
 
         return response()->json([
-            'message' => 'Login successful',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => new UserResource($user),
+            'message'        => 'Login successful',
+            'access_token'   => $token,
+            'token_type'     => 'Bearer',
+            'user'           => new UserResource($user),
             'is_super_admin' => $user->is_super_admin,
         ]);
     }
 
     /**
-     * Logout user (revoke token)
+     * Logout user
      */
     public function logout(Request $request)
     {
@@ -121,7 +125,17 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         $user = $request->user();
-        $user->load('organizations');
+
+        $user->load([
+            'organizations' => function ($query) {
+                $query->select(
+                    'organizations.id',
+                    'organizations.name',
+                    'organizations.slug',
+                    'organizations.code'
+                );
+            }
+        ]);
 
         return new UserResource($user);
     }

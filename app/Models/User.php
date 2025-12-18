@@ -44,6 +44,10 @@ class User extends Authenticatable
         return $this->is_super_admin === true;
     }
 
+    /**
+     * PERUBAHAN: Simplified role hierarchy
+     * Hanya ada 2 role: admin dan user
+     */
     public function hasAccessToOrganization(int $organizationId, ?string $requiredRole = null): bool
     {
         if ($this->isSuperAdmin()) {
@@ -56,16 +60,18 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($requiredRole) {
-            $roleHierarchy = ['user' => 1, 'viewer' => 2, 'editor' => 3, 'admin' => 4];
-            $userRole = $organization->pivot->role ?? 'user';
-
-            return isset($roleHierarchy[$userRole]) &&
-                   isset($roleHierarchy[$requiredRole]) &&
-                   $roleHierarchy[$userRole] >= $roleHierarchy[$requiredRole];
+        // Jika tidak ada required role, cukup cek apakah user ada di organization
+        if (!$requiredRole) {
+            return true;
         }
 
-        return true;
+        // Role hierarchy: admin > user
+        $roleHierarchy = ['user' => 1, 'admin' => 2];
+        $userRole = $organization->pivot->role ?? 'user';
+
+        return isset($roleHierarchy[$userRole]) &&
+               isset($roleHierarchy[$requiredRole]) &&
+               $roleHierarchy[$userRole] >= $roleHierarchy[$requiredRole];
     }
 
     public function getRoleInOrganization(int $organizationId): ?string
@@ -83,21 +89,14 @@ class User extends Authenticatable
         return $organization->pivot->role;
     }
 
-    public function isAdmin(): bool
-    {
-        if ($this->isSuperAdmin()) {
-            return true;
-        }
-
-        return $this->organizations()->wherePivot('role', 'admin')->exists();
-    }
-
     public function isAdminOf(int $organizationId): bool
     {
         return $this->hasAccessToOrganization($organizationId, 'admin');
     }
 
-    // Check if user has 'user' role (read-only)
+    /**
+     * BARU: Check if user is read-only user
+     */
     public function isUserOf(int $organizationId): bool
     {
         if ($this->isSuperAdmin()) {

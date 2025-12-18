@@ -4,19 +4,38 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Organization;
+use App\Models\Content;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class SuperAdminController extends Controller
 {
+    /**
+     * Get dashboard statistics for Super Admin
+     */
+    public function stats(Request $request)
+    {
+        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $stats = [
+            'total_organizations'   => Organization::count(),
+            'active_organizations'  => Organization::where('is_active', true)->count(),
+            'total_super_admins'    => User::where('is_super_admin', true)->count(),
+            'total_contents'        => Content::count(),
+        ];
+
+        return response()->json($stats);
+    }
+
     /**
      * Get all super admins
      */
     public function index(Request $request)
     {
-        // Only super admin can access
-        if (!$request->user()->isSuperAdmin()) {
+        if (!$request->user() || !$request->user()->isSuperAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -35,28 +54,28 @@ class SuperAdminController extends Controller
      */
     public function store(Request $request)
     {
-        if (!$request->user()->isSuperAdmin()) {
+        if (!$request->user() || !$request->user()->isSuperAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
         ]);
 
         $superAdmin = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'is_super_admin' => true,
+            'name'            => $validated['name'],
+            'email'           => $validated['email'],
+            'password'        => Hash::make($validated['password']),
+            'is_super_admin'  => true,
         ]);
 
         return response()->json([
             'message' => 'Super admin created successfully',
             'data' => [
-                'id' => $superAdmin->id,
-                'name' => $superAdmin->name,
+                'id'    => $superAdmin->id,
+                'name'  => $superAdmin->name,
                 'email' => $superAdmin->email,
             ]
         ], 201);
@@ -67,7 +86,7 @@ class SuperAdminController extends Controller
      */
     public function updatePassword(Request $request, User $user)
     {
-        if (!$request->user()->isSuperAdmin()) {
+        if (!$request->user() || !$request->user()->isSuperAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -93,7 +112,7 @@ class SuperAdminController extends Controller
      */
     public function destroy(Request $request, User $user)
     {
-        if (!$request->user()->isSuperAdmin()) {
+        if (!$request->user() || !$request->user()->isSuperAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -106,7 +125,7 @@ class SuperAdminController extends Controller
             return response()->json(['message' => 'Cannot delete yourself'], 422);
         }
 
-        // Check if this is the last super admin
+        // Prevent deleting last super admin
         $superAdminCount = User::where('is_super_admin', true)->count();
         if ($superAdminCount <= 1) {
             return response()->json(['message' => 'Cannot delete the last super admin'], 422);

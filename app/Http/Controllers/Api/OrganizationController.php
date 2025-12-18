@@ -32,10 +32,10 @@ class OrganizationController extends Controller
         $validated['code'] = strtoupper(Str::random(8));
 
         $organization = Organization::create([
-            'name' => $validated['name'],
-            'slug' => $validated['slug'],
-            'code' => $validated['code'],
-            'domain' => $validated['domain'] ?? null,
+            'name'      => $validated['name'],
+            'slug'      => $validated['slug'],
+            'code'      => $validated['code'],
+            'domain'    => $validated['domain'] ?? null,
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
@@ -43,23 +43,30 @@ class OrganizationController extends Controller
             $user = User::firstOrCreate(
                 ['email' => $validated['admin_email']],
                 [
-                    'name' => $validated['admin_name'],
-                    'password' => Hash::make($validated['admin_password']),
-                    'is_super_admin' => false,
+                    'name'            => $validated['admin_name'],
+                    'password'        => Hash::make($validated['admin_password']),
+                    'is_super_admin'  => false,
                 ]
             );
 
             $organization->users()->attach($user->id, ['role' => 'admin']);
         }
 
-        return (new OrganizationResource($organization->load('users')))
+        return (new OrganizationResource(
+            $organization->load(['users'])
+        ))
             ->response()
             ->setStatusCode(201);
     }
 
     public function show(Organization $organization)
     {
-        $organization->load(['users'])->loadCount(['users', 'contents', 'playlists']);
+        $organization->load([
+            'users' => function ($query) {
+                $query->select('users.id', 'users.name', 'users.email');
+            }
+        ])->loadCount(['users', 'contents', 'playlists']);
+
         return new OrganizationResource($organization);
     }
 
@@ -68,7 +75,9 @@ class OrganizationController extends Controller
         $validated = $request->validated();
         $organization->update($validated);
 
-        return new OrganizationResource($organization->load('users'));
+        return new OrganizationResource(
+            $organization->load(['users'])
+        );
     }
 
     public function destroy(Organization $organization)
